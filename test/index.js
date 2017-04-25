@@ -57,22 +57,16 @@ describe('node-weixin-pay index', function () {
         mch_id: merchant.id,
         nonce_str: 'XjUw56N8MjeCUqHCwqgiKwr2CJVgYUpe'
       };
-      console.log(params);
       var sign = nodeWeixinPay.sign(merchant, params);
-      console.log(sign);
-      console.log(sign.length);
       assert.equal(true, sign.length === 32);
     });
   });
 
   describe('#validate', function () {
     it('should get an error ', function () {
-      var error = {};
-      var result = nodeWeixinPay.validate(app, merchant, {}, error);
-      console.log(error);
+      var result = nodeWeixinPay.validate(app, merchant, {});
       assert.equal(true, result instanceof Error);
-      assert.equal(true, error.key === 'appid');
-      assert.equal(true, error.reason === 'Key appid is undefined');
+      assert.equal('Validation Failed!', result.message);
     });
 
     it('should get an error for appid', function () {
@@ -83,17 +77,18 @@ describe('node-weixin-pay index', function () {
         nonce_str: 'ccc'
       }, error);
       assert.equal(true, result instanceof Error);
+      assert.equal('AppId Invalid!', result.message);
     });
 
-    it('should get an error for merchant id', function () {
-      var error = {};
-      var result = nodeWeixinPay.validate(app, merchant, {
-        appid: app.id,
-        mch_id: 'SODFSOFS',
-        nonce_str: 'ccc'
-      }, error);
-      assert.equal(true, result instanceof Error);
-    });
+    // it('should get an error for merchant id', function () {
+    //   var error = {};
+    //   var result = nodeWeixinPay.validate(app, merchant, {
+    //     appid: app.id,
+    //     mch_id: 'SODFSOFS',
+    //     nonce_str: 'ccc'
+    //   }, error);
+    //   assert.equal(true, result instanceof Error);
+    // });
 
     it('should validate ok', function () {
       var error = {};
@@ -103,6 +98,21 @@ describe('node-weixin-pay index', function () {
         nonce_str: 'ccc'
       }, error);
       assert.equal(true, result);
+    });
+
+    it('should be true if wxappid present', function () {
+      var result = nodeWeixinPay.validate(app, merchant, {
+        wxappid: 'sdfsdf'
+      });
+      assert.equal(true, result);
+    });
+  });
+
+  describe('#qrcode', function () {
+    it('should be able to generate qrcode string', function () {
+      var id = 'product_id';
+      var qrcode = nodeWeixinPay.qrcode(app, merchant, id);
+      assert(qrcode);
     });
   });
 
@@ -257,7 +267,7 @@ describe('node-weixin-pay index', function () {
       var data = {
         body: 'sdofsofd',
         out_trade_no: '8283232323',
-        total_fee: 1110,
+        total_fee: 1,
         spbill_create_ip: '127.0.0.1',
         time_start: '19001212',
         time_expire: '19001212',
@@ -286,6 +296,47 @@ describe('node-weixin-pay index', function () {
       nock(url)
         .post('/')
         .reply(200, xmlStr);
+      nodeWeixinPay.request(config, url, data, validation.unified.sending, validation.unified.receiving, function (error) {
+        assert.equal(true, !error);
+        done();
+      });
+    });
+
+    it('should be able to sending data with ssl', function (done) {
+      var url = 'https://post.helloworld.com/';
+      var data = {
+        body: 'sdofsofd',
+        out_trade_no: '8283232323',
+        total_fee: 1,
+        spbill_create_ip: '127.0.0.1',
+        time_start: '19001212',
+        time_expire: '19001212',
+        notify_url: 'https://helloworld.com',
+        trade_type: 'JSSDK'
+      };
+      var xmlStr = xml({
+        xml: [{
+          return_code: 'SUCCESS'
+        }, {
+          return_msg: '成功!'
+        }, {
+          appid: app.id
+        }, {
+          mch_id: merchant.id
+        }, {
+          nonce_str: 'sodsfd'
+        }, {
+          result_code: 'SUCCESS'
+        }, {
+          trade_type: 'dodo'
+        }, {
+          prepay_id: '18383'
+        }]
+      });
+      nock(url)
+        .post('/')
+        .reply(200, xmlStr);
+      config.ssl = true;
       nodeWeixinPay.request(config, url, data, validation.unified.sending, validation.unified.receiving, function (error) {
         assert.equal(true, !error);
         done();
